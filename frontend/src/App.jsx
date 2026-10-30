@@ -11,6 +11,85 @@ function sourceLabel(source) {
   return ''
 }
 
+// Short axis label for a quarter such as "2016-Q3" -> "16 Q3".
+function shortQuarter(label) {
+  return label.slice(2, 4) + ' ' + label.slice(5)
+}
+
+function TimelineChart({ quarters }) {
+  if (!quarters || quarters.length === 0) {
+    return <p>No data for this selection.</p>
+  }
+
+  const width = 760
+  const height = 260
+  const left = 48
+  const right = 10
+  const top = 14
+  const bottom = 46
+  const plotWidth = width - left - right
+  const plotHeight = height - top - bottom
+
+  const maxCount = Math.max(...quarters.map((q) => q.count), 1)
+  const step = Math.pow(10, Math.floor(Math.log10(maxCount))) / 2
+  const niceMax = Math.ceil(maxCount / step) * step
+  const ticks = [0, 1, 2, 3, 4].map((i) => Math.round((niceMax * i) / 4))
+
+  const slot = plotWidth / quarters.length
+  const barWidth = slot * 0.7
+
+  return (
+    <svg
+      viewBox={'0 0 ' + width + ' ' + height}
+      style={{ width: '100%', maxWidth: '760px', height: 'auto' }}
+      role="img"
+      aria-label="Interpellations per quarter"
+    >
+      {ticks.map((tick) => {
+        const y = top + plotHeight - (tick / niceMax) * plotHeight
+        return (
+          <g key={tick}>
+            <line x1={left} x2={width - right} y1={y} y2={y} stroke="currentColor" opacity="0.15" />
+            <text x={left - 6} y={y + 4} textAnchor="end" fontSize="11" fill="currentColor" opacity="0.7">
+              {tick}
+            </text>
+          </g>
+        )
+      })}
+      {quarters.map((item, index) => {
+        const barHeight = (item.count / niceMax) * plotHeight
+        const x = left + index * slot + (slot - barWidth) / 2
+        const y = top + plotHeight - barHeight
+        const partial = index === 0 || index === quarters.length - 1
+        return (
+          <g key={item.quarter}>
+            <rect
+              x={x}
+              y={y}
+              width={barWidth}
+              height={barHeight}
+              fill="#4f7cff"
+              opacity={partial ? 0.45 : 0.9}
+            >
+              <title>{item.quarter + ': ' + item.count + ' interpellations'}</title>
+            </rect>
+            <text
+              x={x + barWidth / 2}
+              y={top + plotHeight + 14}
+              textAnchor="middle"
+              fontSize="10"
+              fill="currentColor"
+              opacity="0.8"
+            >
+              {shortQuarter(item.quarter) + (partial ? '*' : '')}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
 function App() {
   const [backendStatus, setBackendStatus] = useState('checking...')
   const [quality, setQuality] = useState(null)
@@ -21,6 +100,7 @@ function App() {
   const [hideRepeats, setHideRepeats] = useState(false)
   const [offset, setOffset] = useState(0)
   const [result, setResult] = useState({ total: 0, items: [] })
+  const [timeline, setTimeline] = useState({ total: 0, quarters: [] })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -44,6 +124,17 @@ function App() {
       .then((data) => setParties(Array.isArray(data) ? data : []))
       .catch(() => setParties([]))
   }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (party) params.set('party', party)
+    if (hideRepeats) params.set('hide_repeats', 'true')
+
+    fetch(API_URL + '/timeline?' + params.toString())
+      .then((response) => response.json())
+      .then((data) => setTimeline(data))
+      .catch(() => setTimeline({ total: 0, quarters: [] }))
+  }, [party, hideRepeats])
 
   useEffect(() => {
     const params = new URLSearchParams({
@@ -157,6 +248,17 @@ function App() {
           Hide repeated interpellations
         </label>
       </form>
+
+      <h3>
+        Interpellations per quarter ({party || 'all parties'}
+        {hideRepeats ? ', without repeats' : ''}): {timeline.total}
+      </h3>
+      <TimelineChart quarters={timeline.quarters} />
+      <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>
+        * Partial quarters: the term began in November 2015 and ended in autumn
+        2019. The chart follows the party and repeat filters above; the text
+        search only affects the table.
+      </p>
 
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
       {loading && <p>Loading...</p>}

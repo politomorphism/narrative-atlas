@@ -44,7 +44,7 @@ CLUB_TO_PARTY = {
 app = FastAPI(
     title="Narrative Atlas API",
     description="Political and media intelligence platform for narrative discovery, semantic analysis and monitoring.",
-    version="0.4.0",
+    version="0.5.0",
 )
 
 app.add_middleware(
@@ -66,6 +66,18 @@ def to_int(value):
 def repeat_key(item: dict) -> tuple:
     # Records with the same date, MP and text are treated as repeats of one interpellation.
     return (item.get("date"), item.get("mp_id"), item.get("text"))
+
+
+def quarter_of(date_text) -> Optional[str]:
+    # Turns a date such as "2015-11-26" into a quarter label such as "2015-Q4".
+    # Returns None if the date is missing or not in the YYYY-MM-DD form.
+    if not isinstance(date_text, str) or len(date_text) < 7:
+        return None
+    year = to_int(date_text[0:4])
+    month = to_int(date_text[5:7])
+    if year is None or month is None or not 1 <= month <= 12:
+        return None
+    return str(year) + "-Q" + str((month - 1) // 3 + 1)
 
 
 @lru_cache(maxsize=1)
@@ -171,6 +183,43 @@ def parties():
         {"party": name, "count": count}
         for name, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))
     ]
+
+
+@app.get("/timeline")
+def timeline(
+    party: Optional[str] = None,
+    hide_repeats: bool = False,
+):
+    # Number of interpellations per calendar quarter, optionally for one party
+    # and optionally without repeated records. Quarters are in chronological order.
+    data = get_data()
+    items = data
+
+    if party:
+        items = [item for item in items if item["party_resolved"] == party]
+    if hide_repeats:
+        items = [item for item in items if not item["is_repeat"]]
+
+    counts = Counter()
+    without_date = 0
+    for item in items:
+        label = quarter_of(item.get("date"))
+        if label is None:
+            without_date += 1
+        else:
+            counts[label] += 1
+
+    quarters = [
+        {"quarter": label, "count": counts[label]} for label in sorted(counts)
+    ]
+    result = {
+        "party": party or "all",
+        "hide_repeats": hide_repeats,
+        "total": sum(counts.values()),
+        "records_without_valid_date": without_date,
+        "quarters": quarters,
+    }
+    return result
 
 
 @app.get("/interpellations")
