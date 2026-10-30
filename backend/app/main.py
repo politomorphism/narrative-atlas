@@ -35,7 +35,7 @@ def load_interpellations() -> list[dict]:
     with open(DATA_FILE, encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, list):
-        raise ValueError("Fișierul de date trebuie să conțină o listă de obiecte.")
+        raise ValueError("The data file must contain a list of objects.")
     return data
 
 
@@ -45,10 +45,10 @@ def get_data() -> list[dict]:
     except FileNotFoundError:
         raise HTTPException(
             status_code=500,
-            detail="Fișierul de date nu a fost găsit: " + str(DATA_FILE),
+            detail="Data file not found: " + str(DATA_FILE),
         )
     except (ValueError, json.JSONDecodeError) as err:
-        raise HTTPException(status_code=500, detail="Fișier de date invalid: " + str(err))
+        raise HTTPException(status_code=500, detail="Invalid data file: " + str(err))
 
 
 @app.get("/")
@@ -64,7 +64,7 @@ def health():
 @app.get("/parties")
 def parties():
     data = get_data()
-    counts = Counter(item.get("party") or "necunoscut" for item in data)
+    counts = Counter(item.get("party") or "UNKNOWN" for item in data)
     return [
         {"party": name, "count": count}
         for name, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))
@@ -83,7 +83,7 @@ def interpellations(
     items = data
 
     if party:
-        items = [item for item in items if (item.get("party") or "necunoscut") == party]
+        items = [item for item in items if (item.get("party") or "UNKNOWN") == party]
     if year is not None:
         items = [item for item in items if item.get("year") == year]
     if q:
@@ -100,4 +100,7 @@ def interpellations(
         "items": page,
     }
     return result
+
+
+# end of file
 

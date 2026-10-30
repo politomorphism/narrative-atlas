@@ -5,7 +5,7 @@ const API_URL = 'http://127.0.0.1:8000'
 const PAGE_SIZE = 50
 
 function App() {
-  const [backendStatus, setBackendStatus] = useState('se verifică...')
+  const [backendStatus, setBackendStatus] = useState('checking...')
   const [parties, setParties] = useState([])
   const [party, setParty] = useState('')
   const [queryInput, setQueryInput] = useState('')
@@ -19,7 +19,7 @@ function App() {
     fetch(API_URL + '/health')
       .then((response) => response.json())
       .then((data) => setBackendStatus(data.status))
-      .catch(() => setBackendStatus('nu răspunde'))
+      .catch(() => setBackendStatus('not responding'))
   }, [])
 
   useEffect(() => {
@@ -42,7 +42,7 @@ function App() {
     fetch(API_URL + '/interpellations?' + params.toString())
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Eroare de la server: ' + response.status)
+          throw new Error('Server error: ' + response.status)
         }
         return response.json()
       })
@@ -73,17 +73,17 @@ function App() {
         semantic analysis and monitoring.
       </p>
       <p>
-        Stare backend: <strong>{backendStatus}</strong>
+        Backend status: <strong>{backendStatus}</strong>
       </p>
 
-      <h2>Interpelări, Sejm, legislatura a 8-a</h2>
+      <h2>Interpellations, Sejm, 8th term</h2>
 
       <form
         onSubmit={handleSearch}
         style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}
       >
         <select value={party} onChange={handlePartyChange}>
-          <option value="">Toate partidele</option>
+          <option value="">All parties</option>
           {parties.map((item) => (
             <option key={item.party} value={item.party}>
               {item.party} ({item.count})
@@ -94,26 +94,26 @@ function App() {
           type="text"
           value={queryInput}
           onChange={(event) => setQueryInput(event.target.value)}
-          placeholder="Caută în text..."
+          placeholder="Search in text..."
           style={{ minWidth: '16rem' }}
         />
-        <button type="submit">Caută</button>
+        <button type="submit">Search</button>
       </form>
 
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      {loading && <p>Se încarcă...</p>}
+      {loading && <p>Loading...</p>}
 
       <p>
-        {firstShown}-{lastShown} din {result.total} rezultate
+        {firstShown}-{lastShown} of {result.total} results
       </p>
 
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
-            <th style={{ textAlign: 'left', padding: '0.4rem' }}>Data</th>
-            <th style={{ textAlign: 'left', padding: '0.4rem' }}>Partid</th>
+            <th style={{ textAlign: 'left', padding: '0.4rem' }}>Date</th>
+            <th style={{ textAlign: 'left', padding: '0.4rem' }}>Party</th>
             <th style={{ textAlign: 'left', padding: '0.4rem' }}>MP</th>
-            <th style={{ textAlign: 'right', padding: '0.4rem' }}>Cuvinte</th>
+            <th style={{ textAlign: 'right', padding: '0.4rem' }}>Words</th>
             <th style={{ textAlign: 'left', padding: '0.4rem' }}>Text</th>
           </tr>
         </thead>
@@ -142,13 +142,13 @@ function App() {
           onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
           disabled={offset === 0}
         >
-          Pagina anterioară
+          Previous page
         </button>
         <button
           onClick={() => setOffset(offset + PAGE_SIZE)}
           disabled={offset + PAGE_SIZE >= result.total}
         >
-          Pagina următoare
+          Next page
         </button>
       </div>
     </div>
@@ -157,5 +157,4 @@ function App() {
 
 export default App
 
-// sfârșit fișier
-
+// end of file
