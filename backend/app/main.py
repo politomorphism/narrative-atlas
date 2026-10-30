@@ -18,7 +18,7 @@ DATA_FILE = Path(
 app = FastAPI(
     title="Narrative Atlas API",
     description="Political and media intelligence platform for narrative discovery, semantic analysis and monitoring.",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 app.add_middleware(
@@ -30,12 +30,28 @@ app.add_middleware(
 )
 
 
+def repeat_key(item: dict) -> tuple:
+    # Records with the same date, MP and text are treated as repeats of one interpellation.
+    return (item.get("date"), item.get("mp_id"), item.get("text"))
+
+
 @lru_cache(maxsize=1)
 def load_interpellations() -> list[dict]:
     with open(DATA_FILE, encoding="utf-8") as f:
-        data = json.load(f)
-    if not isinstance(data, list):
+        raw = json.load(f)
+    if not isinstance(raw, list):
         raise ValueError("The data file must contain a list of objects.")
+
+    group_sizes = Counter(repeat_key(item) for item in raw)
+    seen = set()
+    data = []
+    for item in raw:
+        key = repeat_key(item)
+        record = dict(item)
+        record["repeat_count"] = group_sizes[key]
+        record["is_repeat"] = key in seen
+        seen.add(key)
+        data.append(record)
     return data
 
 
@@ -61,6 +77,23 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/data-quality")
+def data_quality():
+    data = get_data()
+    total = len(data)
+    repeats = sum(1 for item in data if item["is_repeat"])
+    unknown_items = [
+        item for item in data if (item.get("party") or "UNKNOWN") == "UNKNOWN"
+    ]
+    return {
+        "total_records": total,
+        "repeat_records": repeats,
+        "unique_records": total - repeats,
+        "unknown_party_records": len(unknown_items),
+        "unknown_party_mps": len({item.get("mp_id") for item in unknown_items}),
+    }
+
+
 @app.get("/parties")
 def parties():
     data = get_data()
@@ -76,6 +109,7 @@ def interpellations(
     party: Optional[str] = None,
     year: Optional[int] = None,
     q: Optional[str] = None,
+    hide_repeats: bool = False,
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
@@ -89,6 +123,8 @@ def interpellations(
     if q:
         needle = q.lower()
         items = [item for item in items if needle in (item.get("text") or "").lower()]
+    if hide_repeats:
+        items = [item for item in items if not item["is_repeat"]]
 
     total = len(items)
     page = items[offset : offset + limit]
