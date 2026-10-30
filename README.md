@@ -105,6 +105,10 @@ Open `http://localhost:5173`.
 4. A methodology page that records, for each analysis, its sources, model, prompt version and limits.
 5. An evaluation set of hand-labelled documents to measure how well automated narrative detection agrees with an expert.
 
+## License
+
+Copyright (c) 2026 Serban Gabriel Florin. All rights reserved. The code is published for viewing; any other use requires written permission. See [LICENSE](LICENSE). Data from the Sejm remains subject to its own terms.
+
 ## Author
 
 Serban Gabriel Florin, [Politomorphism Research Project](https://github.com/politomorphism).
