@@ -4,6 +4,13 @@ import './App.css'
 const API_URL = 'http://127.0.0.1:8000'
 const PAGE_SIZE = 50
 
+function sourceLabel(source) {
+  if (source === 'sejm_list') return 'Sejm list'
+  if (source === 'merged_label') return 'merged'
+  if (source === 'unresolved') return 'unresolved'
+  return ''
+}
+
 function App() {
   const [backendStatus, setBackendStatus] = useState('checking...')
   const [quality, setQuality] = useState(null)
@@ -92,12 +99,25 @@ function App() {
       </p>
 
       {quality && (
-        <p>
-          Data quality: <strong>{quality.total_records}</strong> records,{' '}
-          <strong>{quality.repeat_records}</strong> repeated (same date, MP and
-          text), <strong>{quality.unknown_party_records}</strong> without a party
-          ({quality.unknown_party_mps} MPs).
-        </p>
+        <div>
+          <p>
+            Data quality: <strong>{quality.total_records}</strong> records,{' '}
+            <strong>{quality.repeat_records}</strong> repeated (same date, MP and
+            text).
+          </p>
+          <p>
+            Party: <strong>{quality.party_from_data}</strong> from the data,{' '}
+            <strong>{quality.party_from_sejm_list}</strong> filled from the Sejm
+            MP list, <strong>{quality.party_from_merged_label}</strong> merged
+            from the KO label,{' '}
+            <strong>{quality.party_unresolved_records}</strong> unresolved.
+          </p>
+          {!quality.sejm_list_loaded && (
+            <p style={{ color: 'crimson' }}>
+              The Sejm MP list was not found, so missing parties are not filled in.
+            </p>
+          )}
+        </div>
       )}
 
       <h2>Interpellations, Sejm, 8th term</h2>
@@ -163,7 +183,18 @@ function App() {
               style={{ borderTop: '1px solid #8884' }}
             >
               <td style={{ padding: '0.4rem', whiteSpace: 'nowrap' }}>{item.date}</td>
-              <td style={{ padding: '0.4rem' }}>{item.party}</td>
+              <td
+                style={{ padding: '0.4rem', whiteSpace: 'nowrap' }}
+                title={'Original party in the data: ' + String(item.party)}
+              >
+                {item.party_resolved}
+                {sourceLabel(item.party_source) && (
+                  <small style={{ opacity: 0.7 }}>
+                    {' '}
+                    ({sourceLabel(item.party_source)})
+                  </small>
+                )}
+              </td>
               <td style={{ padding: '0.4rem' }}>{item.mp_id}</td>
               <td style={{ padding: '0.4rem', textAlign: 'right' }}>{item.word_count}</td>
               <td style={{ padding: '0.4rem', textAlign: 'right' }}>
